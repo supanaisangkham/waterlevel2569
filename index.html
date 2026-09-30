@@ -78,6 +78,12 @@ th,td{padding:5px 12px;border-bottom:1px solid var(--line);white-space:nowrap;te
 thead{position:sticky;top:0;z-index:1}
 th{background:var(--card);font-weight:600}
 th:first-child,td:first-child{text-align:left}
+.notes h2{margin:0 0 8px;font-size:15px}
+.notes dl{margin:0;display:grid;grid-template-columns:minmax(150px,max-content) 1fr;gap:8px 18px;font-size:13.5px}
+.notes dt{font-weight:600}
+.notes dd{margin:0;color:var(--muted);max-width:75ch}
+.notes dd b{color:var(--text)}
+@media (max-width:600px){.notes dl{grid-template-columns:1fr;gap:2px}.notes dd{margin-bottom:8px}}
 details summary{cursor:pointer;font-weight:500}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 </style>
@@ -120,6 +126,17 @@ details summary{cursor:pointer;font-weight:500}
   <!-- ค่าคงที่ (ซ่อนจากผู้ใช้): UtokID, BasinID และลำดับคอลัมน์ของ C.2 / C.13 -->
   <input type="hidden" id="utok" value="5"><input type="hidden" id="basin" value="10">
   <input type="hidden" id="idxA" value="3"><input type="hidden" id="idxB" value="4">
+  <section class="card notes" aria-labelledby="notesTitle">
+    <h2 id="notesTitle">คำอธิบาย</h2>
+    <dl>
+      <dt>ม.รทก.</dt>
+      <dd>เมตร เหนือระดับน้ำทะเลปานกลาง คือความสูงของผิวน้ำเมื่อวัดจากระดับน้ำทะเล <b>ไม่ใช่ความลึกของน้ำ</b> เช่น 23.73 ม.รทก. หมายถึงผิวน้ำสูงกว่าระดับน้ำทะเล 23.73 เมตร</dd>
+      <dt>ปริมาณน้ำ (ลบ.ม./วิ)</dt>
+      <dd>ลูกบาศก์เมตรต่อวินาที คือปริมาณน้ำที่ไหลผ่านจุดวัดในแต่ละวินาที "% ความจุลำน้ำ" คือปริมาณน้ำเทียบกับที่ลำน้ำรับได้</dd>
+      <dt>ที่มาของข้อมูล</dt>
+      <dd>ข้อมูลรายชั่วโมงจากกรมชลประทาน (hyd-app-db.rid.go.th) หน้านี้ดึงข้อมูลใหม่อัตโนมัติทุก 30 นาที สถานีรายงานผลทุกชั่วโมง ข้อมูลอาจล่าช้าได้ประมาณ 1 ชั่วโมง</dd>
+    </dl>
+  </section>
 </main>
 
 <script>
