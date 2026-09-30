@@ -67,7 +67,11 @@ button.ghost{background:var(--chip);color:var(--text)}
 .stat .l{font-size:12px;color:var(--muted)}
 .stat .v{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
 .up{color:var(--danger)} .down{color:var(--ok)}
-.gauge{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--ok) 0 var(--hi),var(--danger) var(--hi) 100%);opacity:.9}
+.gauge{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--ok) 0 var(--lo),var(--warn) var(--lo) var(--hi),var(--danger) var(--hi) 100%);opacity:.9}
+.gauge .bank.w{background:var(--warn)}
+.gtag.bk.w{color:var(--warn)} .gtag.bk.w i{border-bottom-color:var(--warn)}
+.gw2{font-size:12.5px;margin-top:4px;color:var(--text);opacity:.85}
+.gap.danger .gw2{display:none}
 .fc{margin:0 0 14px;padding:9px 12px;border-radius:10px;background:var(--bg);font-size:14px;border-left:4px solid var(--ok)}
 .fc.warn{border-left-color:var(--warn)} .fc.danger{border-left-color:var(--danger);color:var(--danger);font-weight:600}
 .gw{position:relative;padding:26px 0 26px;margin:0 30px 4px}
@@ -161,7 +165,7 @@ const num = v => { if (v===null||v===undefined||v==='') return NaN; if (typeof v
 const f2 = v => isNaN(v) ? '–' : v.toFixed(2);
 const f0 = v => isNaN(v) ? '–' : Math.round(v).toLocaleString('th-TH');
 const sign = v => isNaN(v) ? '–' : (v>0?'+':'') + v.toFixed(2);
-const STATUS = { danger:'ล้นตลิ่ง', warn:'อาจถึงตลิ่งภายใน 24 ชม.', ok:'ยังไม่ล้นตลิ่ง', na:'ไม่มีข้อมูล' };
+const STATUS = { danger:'ล้นตลิ่ง', warn:'เฝ้าระวัง', ok:'ปกติ', na:'ไม่มีข้อมูล' };
 
 
 let hours = [], stations = [], charts = [], timer = null;
@@ -200,9 +204,11 @@ function buildStation(rs, i, code, name, place){
   const qi = lastIdx(q), ui = lastIdx(up);
   // อัตราขึ้น/ลงเฉลี่ยต่อชั่วโมง (ช่วง 3 ชม. ล่าสุด) และเวลาโดยประมาณที่จะถึงตลิ่ง
   const rate = p3>=0 ? (cur-wl[p3])/(li-p3) : (p1>=0 ? (cur-wl[p1])/(li-p1) : NaN);
-  const eta = cur<hi && rate>0.005 ? (hi-cur)/rate : NaN;
-  const status = isNaN(cur)||isNaN(hi) ? 'na' : cur>=hi ? 'danger' : eta<=24 ? 'warn' : 'ok';
-  return { i, code, name, place, crit, hi, wl, up, q, qp, li, cur, status, rate, eta,
+  const eta = cur<hi && rate>0.005 ? (hi-cur)/rate : NaN;          // ชม. ถึงตลิ่ง
+  const etaW = cur<lo && rate>0.005 ? (lo-cur)/rate : NaN;         // ชม. ถึงระดับเฝ้าระวัง
+  // ปกติ < ระดับเฝ้าระวัง (lo) ≤ เฝ้าระวัง < ระดับตลิ่ง (hi) ≤ ล้นตลิ่ง
+  const status = isNaN(cur)||isNaN(hi) ? 'na' : cur>=hi ? 'danger' : cur>=lo ? 'warn' : 'ok';
+  return { i, code, name, place, crit, lo, hi, etaW, wl, up, q, qp, li, cur, status, rate, eta,
     d1: p1>=0 ? cur-wl[p1] : NaN, d3: p3>=0 ? cur-wl[p3] : NaN, h3: p3>=0 ? li-p3 : 0,
     dDay: first>=0 && first<li ? cur-wl[first] : NaN,
     qNow: qi>=0 ? q[qi] : NaN, qpNow: qi>=0 ? qp[qi] : NaN, upNow: ui>=0 ? up[ui] : NaN,
@@ -222,19 +228,22 @@ function arrow(v){ return isNaN(v) ? '–' : v>0.005 ? `<span class="up">▲ ${v
 function render(){
   charts.forEach(c=>c.destroy()); charts = [];
   $('pair').innerHTML = stations.map((s,k) => {
-    const min = Math.min(s.hi, s.cur) - 3, max = Math.max(s.hi, s.cur) + 1, pct = v => ((v-min)/(max-min)*100).toFixed(1)+'%';
+    const min = Math.min(s.lo, s.cur) - 1.5, max = Math.max(s.hi, s.cur) + 1, pct = v => ((v-min)/(max-min)*100).toFixed(1)+'%';
     const gauge = isNaN(s.hi)||isNaN(s.cur) ? '' : `
       <div class="gw">
         <div class="gtag now" style="left:${pct(s.cur)}">ระดับน้ำ ${f2(s.cur)}<i></i></div>
-        <div class="gauge" style="--hi:${pct(s.hi)}"><div class="pin" style="left:${pct(s.cur)}"></div><div class="bank" style="left:${pct(s.hi)}"></div></div>
+        <div class="gauge" style="--lo:${pct(s.lo)};--hi:${pct(s.hi)}"><div class="pin" style="left:${pct(s.cur)}"></div><div class="bank w" style="left:${pct(s.lo)}"></div><div class="bank" style="left:${pct(s.hi)}"></div></div>
+        <div class="gtag bk w" style="left:${pct(s.lo)}"><i></i>เฝ้าระวัง ${f2(s.lo)}</div>
         <div class="gtag bk" style="left:${pct(s.hi)}"><i></i>ตลิ่ง ${f2(s.hi)}</div>
       </div>`;
     const clock = h => { const t = new Date($('date').value + 'T00:00:00'); t.setHours(t.getHours() + parseInt(hours[s.li]) + Math.round(h)); return t.toLocaleString('th-TH',{weekday:'short',hour:'2-digit',minute:'2-digit'}) + ' น.'; };
+    const dur = h => h<48 ? Math.round(h)+' ชม.' : (h/24).toFixed(1)+' วัน';
     const fc = s.status==='na' ? '' : s.cur>=s.hi
       ? `<div class="fc danger">ระดับน้ำสูงกว่าตลิ่ง ${f2(s.cur-s.hi)} ม.</div>`
       : !isNaN(s.eta)
-        ? `<div class="fc ${s.status}">น้ำขึ้นเฉลี่ย ${(s.rate*100).toFixed(1)} ซม./ชม. ถ้าขึ้นในอัตรานี้ต่อไป จะถึงตลิ่งในอีกประมาณ <b>${s.eta<48?Math.round(s.eta)+' ชม.':(s.eta/24).toFixed(1)+' วัน'}</b> (ราว ${clock(s.eta)})</div>`
-        : `<div class="fc ok">ระดับน้ำ${s.rate<-0.005?'กำลังลดลง':'ทรงตัว'} ยังไม่มีแนวโน้มถึงตลิ่ง</div>`;
+        ? `<div class="fc ${s.status}">น้ำขึ้นเฉลี่ย ${(s.rate*100).toFixed(1)} ซม./ชม. ถ้าขึ้นในอัตรานี้ต่อไป
+            ${!isNaN(s.etaW) ? `จะถึง<b>ระดับเฝ้าระวัง</b>ในอีกประมาณ <b>${dur(s.etaW)}</b> (ราว ${clock(s.etaW)}) และ` : 'จะ'}ถึง<b>ตลิ่ง</b>ในอีกประมาณ <b>${dur(s.eta)}</b> (ราว ${clock(s.eta)})</div>`
+        : `<div class="fc ${s.status}">ระดับน้ำ${s.rate<-0.005?'กำลังลดลง':'ทรงตัว'} ยังไม่มีแนวโน้มถึง${s.status==='warn'?'ตลิ่ง':'ระดับเฝ้าระวัง'}</div>`;
     return `<div class="card stn ${s.status}">
       <div class="top">
         <div><div class="code">${s.code} <span class="nm">${s.name}</span></div><div class="sub">${s.place} · ข้อมูล ${s.li>=0?hours[s.li]+' น.':'–'}</div></div>
@@ -246,6 +255,7 @@ function render(){
           <div class="hl">${s.cur>=s.hi?'สูงกว่าตลิ่ง':'ห่างจากตลิ่งอีก'}</div>
           <div class="gv">${f2(Math.abs(s.cur-s.hi))}<small> เมตร</small></div>
           <div class="gs">ระดับตลิ่ง ${f2(s.hi)} ม.รทก.</div>
+          <div class="gw2">${s.cur>=s.hi ? '' : s.cur>=s.lo ? `⚠ เกินระดับเฝ้าระวัง (${f2(s.lo)}) แล้ว ${f2(s.cur-s.lo)} ม.` : `ต่ำกว่าระดับเฝ้าระวัง (${f2(s.lo)}) ${f2(s.lo-s.cur)} ม.`}</div>
         </div>
       </div>
       <div class="stats">
@@ -263,6 +273,7 @@ function render(){
       <div class="legend">
         <span><span class="dot" style="background:var(--accent)"></span>ระดับน้ำ</span>
         ${s.hasUp?'<span><span class="dot" style="background:var(--muted)"></span>ระดับเหนือเขื่อน</span>':''}
+        <span><span class="dot" style="background:var(--warn)"></span>ระดับเฝ้าระวัง ${f2(s.lo)} ม.</span>
         <span><span class="dot" style="background:var(--danger)"></span>ระดับตลิ่ง ${f2(s.hi)} ม.</span>
         ${s.hasQ?'<span><span class="dot" style="background:var(--na)"></span>ปริมาณน้ำ (แกนขวา)</span>':''}
       </div>
@@ -276,7 +287,8 @@ function drawChart(cv, s){
   const clean = a => a.map(v=>isNaN(v)?null:v), flat = v => hours.map(()=>v);
   const ds = [
     { type:'line', label:'ระดับน้ำ', data:clean(s.wl), borderColor:css('--accent'), backgroundColor:css('--accent'), pointRadius:2.5, borderWidth:2.5, spanGaps:true, yAxisID:'y', order:1 },
-    { type:'line', label:'ระดับตลิ่ง', data:flat(s.hi), borderColor:css('--danger'), borderDash:[6,4], pointRadius:0, borderWidth:1.5, yAxisID:'y', order:2 }
+    { type:'line', label:'ระดับตลิ่ง', data:flat(s.hi), borderColor:css('--danger'), borderDash:[6,4], pointRadius:0, borderWidth:1.5, yAxisID:'y', order:2 },
+    { type:'line', label:'ระดับเฝ้าระวัง', data:flat(s.lo), borderColor:css('--warn'), borderDash:[6,4], pointRadius:0, borderWidth:1.5, yAxisID:'y', order:3 }
   ];
   if (s.hasUp) ds.push({ type:'line', label:'เหนือเขื่อน', data:clean(s.up), borderColor:css('--muted'), pointRadius:0, borderWidth:1.5, spanGaps:true, yAxisID:'y', order:4 });
   if (s.hasQ)  ds.push({ type:'bar', label:'ปริมาณน้ำ', data:clean(s.q), backgroundColor:css('--na')+'55', yAxisID:'y2', order:5 });
@@ -293,7 +305,7 @@ function drawChart(cv, s){
 
 function renderTable(){
   const last = Math.max(-1, ...stations.map(s=>s.li));
-  const cell = (s,v) => { const st = isNaN(v)||isNaN(s.hi) ? '' : v>=s.hi ? 'danger' : '';
+  const cell = (s,v) => { const st = isNaN(v)||isNaN(s.hi) ? '' : v>=s.hi ? 'danger' : v>=s.lo ? 'warn' : '';
     return `<td style="${st?`color:var(--${st});font-weight:600`:''}">${f2(v)}</td>`; };
   const span = s => 1 + (s.hasUp?1:0) + (s.hasQ?1:0);
   const head = '<tr><th rowspan="2" style="vertical-align:bottom">เวลา</th>' + stations.map(s => `<th colspan="${span(s)}">${s.code} ${s.name}</th>`).join('') + '</tr>'
