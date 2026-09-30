@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>C.2 · C.13 Water Level</title>
+<title>ระดับน้ำนครสวรรค์</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{
   --bg:#f3f5f8; --card:#fff; --text:#1c2430; --muted:#667085; --line:#e2e6eb;
-  --accent:#1f6fb2; --ok:#2e8b57; --warn:#d99a1e; --danger:#c8372d; --na:#9aa4b2; --chip:#eef2f7; --mpbg:#17466e;
+  --accent:#1f6fb2; --ok:#2e8b57; --warn:#d99a1e; --danger:#c8372d; --na:#9aa4b2; --chip:#eef2f7; --mpbg:#17466e; --ping:#2a9d8f; --nan:#7b61c9; --river:#9cc3e6;
 }
 @media (prefers-color-scheme: dark){
   :root{ --bg:#10151b; --card:#19212a; --text:#e6ebf0; --muted:#98a2b3; --line:#2a333e;
-    --accent:#5aa6e6; --ok:#4cbf82; --warn:#e8b54a; --danger:#ef6a5f; --na:#5d6773; --chip:#232d38; --mpbg:#1d3b57; }
+    --accent:#5aa6e6; --ok:#4cbf82; --warn:#e8b54a; --danger:#ef6a5f; --na:#5d6773; --chip:#232d38; --mpbg:#1d3b57; --ping:#4cc3b5; --nan:#a08bea; --river:#2f5a80; }
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 "IBM Plex Sans Thai",system-ui,sans-serif}
@@ -37,6 +37,47 @@ input[type=number]{width:70px}
 button{background:var(--accent);color:#fff;border:0;cursor:pointer;font-weight:500;padding:7px 16px}
 button.ghost{background:var(--chip);color:var(--text)}
 #status{font-size:13px;color:var(--muted)}
+.sechead{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}
+.sechead h2{margin:0;font-size:17px;font-weight:600}
+.fmap{display:grid;grid-template-columns:1fr 1fr;column-gap:14px;max-width:880px;margin:0 auto}
+.fmap .node{grid-column:span 1}
+.fmap .node.main{grid-column:1 / -1;justify-self:center;width:min(100%,430px)}
+.fmap svg{grid-column:1 / -1;width:100%;height:64px;display:block}
+.fmap .riv{fill:none;stroke:var(--river);stroke-width:7;stroke-linecap:round}
+.fmap .rl{font-size:12px;fill:var(--muted)}
+.node{border:1px solid var(--line);border-left:6px solid var(--na);border-radius:12px;padding:10px 12px;background:var(--card);display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;min-width:0}
+.node.ok{border-left-color:var(--ok)} .node.warn{border-left-color:var(--warn)} .node.danger{border-left-color:var(--danger)}
+.node .t{font-weight:600;font-size:15px;min-width:0}
+.node .t span{font-weight:500;color:var(--muted);font-size:13px}
+.node .r{font-size:12px;color:var(--muted);grid-column:1/-1}
+.node .lv{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.2}
+.node .lv small{font-size:12px;color:var(--muted);font-weight:400}
+.node .gp{justify-self:end;text-align:right;font-size:12px;color:var(--muted)}
+.node .gp b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.node.ok .gp b{color:var(--ok)} .node.warn .gp b{color:var(--warn)} .node.danger .gp b{color:var(--danger)}
+.node .qq{grid-column:1/-1;font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px}
+.node .qq b{color:var(--text);font-variant-numeric:tabular-nums}
+.fmap .gapc{grid-column:1/-1;height:14px}
+@media (max-width:560px){
+  .fmap{column-gap:8px}
+  .fmap .node:not(.main){grid-template-columns:1fr;padding:9px 10px}
+  .fmap .node:not(.main) .badge{justify-self:start;order:-1;font-size:12px;padding:1px 9px}
+  .fmap .node:not(.main) .t{font-size:14px}
+  .fmap .node:not(.main) .t span{display:block}
+  .fmap .node:not(.main) .gp{justify-self:start;text-align:left}
+  .fmap .node:not(.main) .lv{font-size:22px}
+}
+.inflow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}
+.inflow .it{background:var(--bg);border-radius:10px;padding:10px 12px}
+.inflow .it .l{font-size:12px;color:var(--muted)}
+.inflow .it .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.inflow .it .v small{font-size:12px;color:var(--muted);font-weight:400}
+.inflow .it.sum{background:color-mix(in srgb,var(--accent) 10%,var(--card));border:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+.inflow .msg{grid-column:1/-1;padding:10px 12px;border-radius:10px;border-left:4px solid var(--na);background:var(--bg);font-size:14px}
+.inflow .msg.rise{border-left-color:var(--warn)} .inflow .msg.fall{border-left-color:var(--ok)}
+main > *{min-width:0}
+.inflow .msg .fine{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.chartwrap.sm{height:240px}
 #status.ok{color:var(--ok)} #status.err{color:var(--danger)}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media (max-width:980px){.pair{grid-template-columns:1fr}}
@@ -118,7 +159,7 @@ details summary{cursor:pointer;font-weight:500}
 </div>
 <header>
   <div>
-    <h1>ระดับน้ำ C.2 นครสวรรค์ · C.13 ท้ายเขื่อนเจ้าพระยา</h1>
+    <h1>ระดับน้ำ นครสวรรค์ · ปิง น่าน เจ้าพระยา</h1>
     <div class="sub">ข้อมูลรายชั่วโมงจากกรมชลประทาน · <span id="status">กำลังเริ่ม…</span></div>
   </div>
   <div class="controls">
@@ -130,19 +171,41 @@ details summary{cursor:pointer;font-weight:500}
   </div>
 </header>
 <main>
+  <section class="card" aria-labelledby="mapTitle">
+    <div class="sechead">
+      <h2 id="mapTitle">เส้นทางน้ำเข้านครสวรรค์</h2>
+      <div class="sub">แม่น้ำปิง (P.17) และแม่น้ำน่าน (N.67) ไหลมารวมกันที่ปากน้ำโพ เป็นแม่น้ำเจ้าพระยาที่ C.2 แล้วไหลลงสู่เขื่อนเจ้าพระยา (C.13)</div>
+    </div>
+    <div class="fmap" id="fmap"></div>
+  </section>
+
+  <section class="card" aria-labelledby="inTitle">
+    <div class="sechead">
+      <h2 id="inTitle">น้ำที่กำลังไหลเข้า C.2</h2>
+      <div class="sub">ปริมาณน้ำจากแม่น้ำปิงและแม่น้ำน่าน เทียบกับปริมาณน้ำที่ไหลผ่าน C.2</div>
+    </div>
+    <div class="inflow" id="inflow"></div>
+    <div class="ct">ปริมาณน้ำรายชั่วโมง (ลบ.ม./วิ)</div>
+    <div class="chartwrap sm"><canvas id="chIn"></canvas></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--ping)"></span>P.17 แม่น้ำปิง</span>
+      <span><span class="dot" style="background:var(--nan)"></span>N.67 แม่น้ำน่าน</span>
+      <span><span class="dot" style="background:var(--text)"></span>C.2 เจ้าพระยา</span>
+    </div>
+  </section>
+
   <section class="pair" id="pair"></section>
 
   <section class="card">
     <div class="row" style="justify-content:space-between;margin-bottom:10px">
-      <strong>ตารางรายชั่วโมง · C.2 ค่ายจิรประวัติ และ C.13 ท้ายเขื่อนเจ้าพระยา</strong>
+      <strong>ตารางรายชั่วโมง · 4 สถานี</strong>
       <button class="ghost" id="csv">ดาวน์โหลด CSV</button>
     </div>
     <div class="tablewrap"><table id="tbl"></table></div>
   </section>
 
-  <!-- ค่าคงที่ (ซ่อนจากผู้ใช้): UtokID, BasinID และลำดับคอลัมน์ของ C.2 / C.13 -->
+  <!-- ค่าคงที่ (ซ่อนจากผู้ใช้): UtokID, BasinID · ลำดับคอลัมน์ของแต่ละสถานีอยู่ใน STATIONS ในสคริปต์ -->
   <input type="hidden" id="utok" value="5"><input type="hidden" id="basin" value="10">
-  <input type="hidden" id="idxA" value="3"><input type="hidden" id="idxB" value="4">
   <section class="card notes" aria-labelledby="notesTitle">
     <h2 id="notesTitle">คำอธิบาย</h2>
     <dl>
@@ -168,7 +231,14 @@ const sign = v => isNaN(v) ? '–' : (v>0?'+':'') + v.toFixed(2);
 const STATUS = { danger:'ล้นตลิ่ง', warn:'เฝ้าระวัง', ok:'ปกติ', na:'ไม่มีข้อมูล' };
 
 
-let hours = [], stations = [], charts = [], timer = null;
+// ลำดับคอลัมน์ (idx) ของแต่ละสถานีในข้อมูลจากกรมชลประทาน (UtokID 5, BasinID 10)
+const STATIONS = [
+  { key:'P17', idx:1, code:'P.17', name:'บ้านท่างิ้ว',        place:'อ.บรรพตพิสัย จ.นครสวรรค์', river:'แม่น้ำปิง' },
+  { key:'N67', idx:2, code:'N.67', name:'วัดเกยไชยเหนือ',     place:'อ.ชุมแสง จ.นครสวรรค์',     river:'แม่น้ำน่าน' },
+  { key:'C2',  idx:3, code:'C.2',  name:'ค่ายจิรประวัติ',      place:'อ.เมืองนครสวรรค์ จ.นครสวรรค์', river:'แม่น้ำเจ้าพระยา' },
+  { key:'C13', idx:4, code:'C.13', name:'ท้ายเขื่อนเจ้าพระยา', place:'อ.สรรพยา จ.ชัยนาท',         river:'แม่น้ำเจ้าพระยา' }
+];
+let hours = [], stations = [], byKey = {}, charts = [], inChart = null, timer = null;
 
 function todayISO(){ const d=new Date(); return new Date(d - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
 function toBE(iso){ const [y,m,d]=iso.split('-'); return `${d}/${m}/${+y+543}`; }
@@ -188,7 +258,8 @@ async function load(){
   }catch(e){ setStatus('ดึงข้อมูลไม่สำเร็จ: ' + e.message, 'err'); }
 }
 
-function buildStation(rs, i, code, name, place){
+function buildStation(rs, cfg){
+  const { idx:i, code, name, place, river, key } = cfg;
   const crit = String(rs.map(r=>r['WLCriteria'+i]).find(Boolean) ?? '');
   const m = crit.match(/(-?[\d.]+)\s*-\s*(-?[\d.]+)/);
   const lo = m ? +m[1] : NaN, hi = m ? +m[2] : NaN;
@@ -208,7 +279,7 @@ function buildStation(rs, i, code, name, place){
   const etaW = cur<lo && rate>0.005 ? (lo-cur)/rate : NaN;         // ชม. ถึงระดับเฝ้าระวัง
   // ปกติ < ระดับเฝ้าระวัง (lo) ≤ เฝ้าระวัง < ระดับตลิ่ง (hi) ≤ ล้นตลิ่ง
   const status = isNaN(cur)||isNaN(hi) ? 'na' : cur>=hi ? 'danger' : cur>=lo ? 'warn' : 'ok';
-  return { i, code, name, place, crit, lo, hi, etaW, wl, up, q, qp, li, cur, status, rate, eta,
+  return { i, key, code, name, place, river, crit, lo, hi, etaW, wl, up, q, qp, li, cur, status, rate, eta,
     d1: p1>=0 ? cur-wl[p1] : NaN, d3: p3>=0 ? cur-wl[p3] : NaN, h3: p3>=0 ? li-p3 : 0,
     dDay: first>=0 && first<li ? cur-wl[first] : NaN,
     qNow: qi>=0 ? q[qi] : NaN, qpNow: qi>=0 ? qp[qi] : NaN, upNow: ui>=0 ? up[ui] : NaN,
@@ -219,7 +290,8 @@ function ingest(text){
   let d = JSON.parse(text); if (typeof d === 'string') d = JSON.parse(d);
   const rs = Array.isArray(d) ? d : (d.rows || []);
   hours = rs.map(r => String(r.hourlytime ?? '').replace(/\.00$/,'') + ':00');
-  stations = [ buildStation(rs, +$('idxA').value, 'C.2', 'ค่ายจิรประวัติ', 'อ.เมืองนครสวรรค์ จ.นครสวรรค์'), buildStation(rs, +$('idxB').value, 'C.13', 'ท้ายเขื่อนเจ้าพระยา', 'อ.สรรพยา จ.ชัยนาท') ];
+  stations = STATIONS.map(c => buildStation(rs, c));
+  byKey = Object.fromEntries(stations.map(s => [s.key, s]));
   render();
 }
 
@@ -227,7 +299,9 @@ function arrow(v){ return isNaN(v) ? '–' : v>0.005 ? `<span class="up">▲ ${v
 
 function render(){
   charts.forEach(c=>c.destroy()); charts = [];
-  $('pair').innerHTML = stations.map((s,k) => {
+  renderMap(); renderInflow();
+  const mainSt = [byKey.C2, byKey.C13];
+  $('pair').innerHTML = mainSt.map((s,k) => {
     const min = Math.min(s.lo, s.cur) - 1.5, max = Math.max(s.hi, s.cur) + 1, pct = v => ((v-min)/(max-min)*100).toFixed(1)+'%';
     const gauge = isNaN(s.hi)||isNaN(s.cur) ? '' : `
       <div class="gw">
@@ -279,8 +353,68 @@ function render(){
       </div>
     </div>`;
   }).join('');
-  stations.forEach((s,k) => charts.push(drawChart($('ch'+k), s)));
+  mainSt.forEach((s,k) => charts.push(drawChart($('ch'+k), s)));
   renderTable();
+}
+
+function node(s, main){
+  const gap = s.cur - s.hi;
+  const gp = s.status==='na' ? '' : gap>=0 ? `สูงกว่าตลิ่ง<b>${f2(gap)} ม.</b>` : `ห่างตลิ่ง<b>${f2(-gap)} ม.</b>`;
+  return `<div class="node ${s.status} ${main?'main':''}">
+    <div class="t">${s.code} <span>${s.name}</span></div>
+    <span class="badge ${s.status}">${STATUS[s.status]}</span>
+    <div class="r">${s.river} · ${s.place}</div>
+    <div class="lv">${f2(s.cur)} <small>ม.รทก.</small></div>
+    <div class="gp">${gp}</div>
+    <div class="qq"><span>3 ชม. ${arrow(s.d3)}</span>${s.hasQ?`<span>ปริมาณน้ำ <b>${f0(s.qNow)}</b> ลบ.ม./วิ${isNaN(s.qpNow)?'':` (${f0(s.qpNow)}% ความจุ)`}</span>`:''}<span>ข้อมูล ${s.li>=0?hours[s.li]+' น.':'–'}</span></div>
+  </div>`;
+}
+
+function renderMap(){
+  const P = byKey.P17, N = byKey.N67, C2 = byKey.C2, C13 = byKey.C13;
+  $('fmap').innerHTML = `
+    ${node(P)}${node(N)}
+    <svg viewBox="0 0 400 64" preserveAspectRatio="none" aria-hidden="true">
+      <path class="riv" d="M100 0 C100 34, 200 30, 200 64" style="stroke:var(--ping)"/>
+      <path class="riv" d="M300 0 C300 34, 200 30, 200 64" style="stroke:var(--nan)"/>
+    </svg>
+    ${node(C2, true)}
+    <svg viewBox="0 0 400 64" preserveAspectRatio="none" aria-hidden="true">
+      <path class="riv" d="M200 0 L200 64"/>
+    </svg>
+    ${node(C13, true)}`;
+}
+
+// เวลาล่าสุดที่ทั้ง 3 สถานีมีปริมาณน้ำ
+function lastCommonQ(list){
+  for (let k = hours.length-1; k >= 0; k--) if (list.every(s => !isNaN(s.q[k]))) return k;
+  return -1;
+}
+
+function renderInflow(){
+  const P = byKey.P17, N = byKey.N67, C = byKey.C2;
+  const k = lastCommonQ([P, N, C]);
+  if (k < 0){ $('inflow').innerHTML = '<div class="msg">ยังไม่มีข้อมูลปริมาณน้ำครบทั้ง 3 สถานี</div>'; if (inChart) inChart.destroy(); return; }
+  const qp = P.q[k], qn = N.q[k], qc = C.q[k];
+  $('inflow').innerHTML = `
+    <div class="it"><div class="l">P.17 แม่น้ำปิง</div><div class="v">${f0(qp)} <small>ลบ.ม./วิ</small></div></div>
+    <div class="it"><div class="l">N.67 แม่น้ำน่าน</div><div class="v">${f0(qn)} <small>ลบ.ม./วิ</small></div></div>
+    <div class="it"><div class="l">ไหลผ่าน C.2 ตอนนี้</div><div class="v">${f0(qc)} <small>ลบ.ม./วิ</small></div></div>`;
+  if (inChart) inChart.destroy();
+  const clean = a => a.map(v => isNaN(v) ? null : v);
+  inChart = new Chart($('chIn'), {
+    data:{ labels:hours, datasets:[
+      { type:'line', label:'C.2 เจ้าพระยา', data:clean(C.q), borderColor:css('--text'), backgroundColor:css('--text'), borderWidth:2.5, pointRadius:2, spanGaps:true, order:0 },
+      { type:'line', label:'P.17 ปิง', data:clean(P.q), borderColor:css('--ping'), backgroundColor:css('--ping'), borderWidth:2.5, pointRadius:2, spanGaps:true, order:1 },
+      { type:'line', label:'N.67 น่าน', data:clean(N.q), borderColor:css('--nan'), backgroundColor:css('--nan'), borderWidth:2.5, pointRadius:2, spanGaps:true, order:1 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+        title:c => `${c[0].label} น.`,
+        label:c => c.raw==null ? null : `${c.dataset.label}: ${f0(c.raw)} ลบ.ม./วิ` } } },
+      scales:{ x:{ ticks:{color:css('--muted'),maxRotation:0,autoSkipPadding:10}, grid:{display:false} },
+               y:{ beginAtZero:true, ticks:{color:css('--muted')}, grid:{color:css('--line')} } } }
+  });
 }
 
 function drawChart(cv, s){
@@ -322,7 +456,7 @@ function downloadCSV(){
   const csv = lines.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'}));
-  a.download = `C2-C13-${$('date').value}.csv`; a.click();
+  a.download = `water-nakhonsawan-${$('date').value}.csv`; a.click();
 }
 
 $('date').value = todayISO();
