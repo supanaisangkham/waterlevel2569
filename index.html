@@ -55,6 +55,12 @@ button.ghost{background:var(--chip);color:var(--text)}
 .node .gp{justify-self:end;text-align:right;font-size:12px;color:var(--muted)}
 .node .gp b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
 .node.ok .gp b{color:var(--ok)} .node.warn .gp b{color:var(--warn)} .node.danger .gp b{color:var(--danger)}
+.node .trow{grid-column:1/-1;margin:2px 0}
+.tp{display:inline-block;font-size:13px;font-weight:600;padding:2px 10px;border-radius:99px;background:var(--chip)}
+.tp small{font-weight:400;color:var(--muted);font-size:12px}
+.tp.rise{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,var(--card))}
+.tp.fall{color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--card))}
+.tp.flat{color:var(--muted)}
 .node .qq{grid-column:1/-1;font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px}
 .node .qq b{color:var(--text);font-variant-numeric:tabular-nums}
 .fmap .gapc{grid-column:1/-1;height:14px}
@@ -260,7 +266,7 @@ async function load(){
 
 function buildStation(rs, cfg){
   const { idx:i, code, name, place, river, key } = cfg;
-  const crit = String(rs.map(r=>r['WLCriteria'+i]).find(Boolean) ?? '');
+  const crit = String(rs.map(r=>r['WLCriteria'+i]).filter(Boolean).pop() ?? '');   // ใช้เกณฑ์จากชั่วโมงล่าสุด
   const m = crit.match(/(-?[\d.]+)\s*-\s*(-?[\d.]+)/);
   const lo = m ? +m[1] : NaN, hi = m ? +m[2] : NaN;
   const wl = rs.map(r=>num(r['wlvalues'+i]));
@@ -295,7 +301,13 @@ function ingest(text){
   render();
 }
 
-function arrow(v){ return isNaN(v) ? '–' : v>0.005 ? `<span class="up">▲ ${v.toFixed(2)}</span>` : v<-0.005 ? `<span class="down">▼ ${(-v).toFixed(2)}</span>` : '● คงที่'; }
+const cm = v => Math.round(Math.abs(v)*100) + ' ซม.';
+function arrow(v){ return isNaN(v) ? '–' : v>0.005 ? `<span class="up">▲ ขึ้น ${cm(v)}</span>` : v<-0.005 ? `<span class="down">▼ ลด ${cm(v)}</span>` : '● ทรงตัว'; }
+function trendPill(v, h){
+  if (isNaN(v)) return '';
+  const t = v>0.005 ? ['rise','▲ น้ำขึ้น '+cm(v)] : v<-0.005 ? ['fall','▼ น้ำลด '+cm(v)] : ['flat','● ทรงตัว'];
+  return `<span class="tp ${t[0]}">${t[1]} <small>ใน ${h||3} ชม.</small></span>`;
+}
 
 function render(){
   charts.forEach(c=>c.destroy()); charts = [];
@@ -366,7 +378,8 @@ function node(s, main){
     <div class="r">${s.river} · ${s.place}</div>
     <div class="lv">${f2(s.cur)} <small>ม.รทก.</small></div>
     <div class="gp">${gp}</div>
-    <div class="qq"><span>3 ชม. ${arrow(s.d3)}</span>${s.hasQ?`<span>ปริมาณน้ำ <b>${f0(s.qNow)}</b> ลบ.ม./วิ${isNaN(s.qpNow)?'':` (${f0(s.qpNow)}% ความจุ)`}</span>`:''}<span>ข้อมูล ${s.li>=0?hours[s.li]+' น.':'–'}</span></div>
+    <div class="trow">${trendPill(s.d3, s.h3)}</div>
+    <div class="qq">${s.hasQ?`<span>ปริมาณน้ำ <b>${f0(s.qNow)}</b> ลบ.ม./วิ${isNaN(s.qpNow)?'':` (${f0(s.qpNow)}% ความจุ)`}</span>`:''}<span>ข้อมูล ${s.li>=0?hours[s.li]+' น.':'–'}</span></div>
   </div>`;
 }
 
