@@ -215,7 +215,7 @@ details summary{cursor:pointer;font-weight:500}
       <div class="sub">ปริมาณน้ำจากแม่น้ำปิงและแม่น้ำน่าน เทียบกับปริมาณน้ำที่ไหลผ่าน C.2</div>
     </div>
     <div class="inflow" id="inflow"></div>
-    <div class="ct">ปริมาณน้ำรายชั่วโมง (ลบ.ม./วิ)</div>
+    <div class="ct" id="inTitle2">ปริมาณน้ำย้อนหลัง 7 วัน (ลบ.ม./วิ)</div>
     <div class="chartwrap sm"><canvas id="chIn"></canvas></div>
     <div class="legend">
       <span><span class="dot" style="background:var(--ping)"></span>P.17 แม่น้ำปิง</span>
@@ -274,18 +274,56 @@ function todayISO(){ const d=new Date(); return new Date(d - d.getTimezoneOffset
 function toBE(iso){ const [y,m,d]=iso.split('-'); return `${d}/${m}/${+y+543}`; }
 function setStatus(t, cls=''){ $('status').textContent=t; $('status').className=cls; }
 
-async function load(){
+// ดึงข้อมูลรายชั่วโมงของวันที่ระบุ (iso = yyyy-mm-dd) คืนค่าเป็นข้อความ JSON
+async function fetchDay(iso){
   const p = new URLSearchParams({
-    'DW[UtokID]': $('utok').value, 'DW[BasinID]': $('basin').value, 'DW[TimeCurrent]': toBE($('date').value),
+    'DW[UtokID]': $('utok').value, 'DW[BasinID]': $('basin').value, 'DW[TimeCurrent]': toBE(iso),
     _search:'false', nd:Date.now(), rows:'100', page:'1', sidx:'indexhourly', sord:'asc'
   });
+  const res = await fetch(API, { method:'POST', body:p });   // form ธรรมดา → ไม่มี CORS preflight
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.text();
+}
+const parseRows = t => { let d = JSON.parse(t); if (typeof d === 'string') d = JSON.parse(d); return Array.isArray(d) ? d : (d.rows || []); };
+
+async function load(){
   setStatus('กำลังดึงข้อมูล…');
   try{
-    const res = await fetch(API, { method:'POST', body:p });   // form ธรรมดา → ไม่มี CORS preflight
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    ingest(await res.text());
+    const text = await fetchDay($('date').value);
+    dayCache[$('date').value] = parseRows(text);
+    ingest(text);
     setStatus(`อัปเดต ${new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.`, 'ok');
+    loadHistory();
   }catch(e){ setStatus('ดึงข้อมูลไม่สำเร็จ: ' + e.message, 'err'); }
+}
+
+/* ---------- ข้อมูลย้อนหลัง 7 วัน (สำหรับกราฟปริมาณน้ำ) ---------- */
+const HIST_DAYS = 7;
+const dayCache = {};      // วันที่ผ่านไปแล้วไม่เปลี่ยน เก็บไว้ไม่ต้องดึงซ้ำ
+let hist = null;
+const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return new Date(d - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+async function loadHistory(){
+  const end = $('date').value;
+  const days = Array.from({length:HIST_DAYS}, (_, i) => addDays(end, i - HIST_DAYS + 1));
+  await Promise.all(days.map(async d => {
+    if (dayCache[d]) return;                 // วันนี้ถูกเก็บไว้แล้วตอน load()
+    try { dayCache[d] = parseRows(await fetchDay(d)); } catch { dayCache[d] = dayCache[d] || []; }
+  }));
+  const idx = Object.fromEntries(STATIONS.map(c => [c.key, c.idx]));
+  const h = { labels:[], tips:[], newDay:[], P:[], N:[], C:[] };
+  days.forEach(d => {
+    const [y, m, dd] = d.split('-').map(Number);
+    (dayCache[d] || []).forEach(r => {
+      const hr = parseInt(r.hourlytime);
+      const q = k => num(r['qvalues' + idx[k]]);
+      if ([q('P17'), q('N67'), q('C2')].every(isNaN)) return;          // ชั่วโมงที่ยังไม่มีข้อมูล
+      h.labels.push(`${dd}/${m}`); h.newDay.push(hr === 1);
+      h.tips.push(`${dd}/${m}/${y + 543} ${hr}:00 น.`);
+      h.P.push(q('P17')); h.N.push(q('N67')); h.C.push(q('C2'));
+    });
+  });
+  hist = h.labels.length ? h : null;
+  renderInflow();
 }
 
 function buildStation(rs, cfg){
@@ -464,17 +502,23 @@ function renderInflow(){
     <div class="it"><div class="l">ไหลผ่าน C.2 ตอนนี้</div><div class="v">${f0(qc)} <small>ลบ.ม./วิ</small></div></div>`;
   if (inChart) inChart.destroy();
   const clean = a => a.map(v => isNaN(v) ? null : v);
+  // ถ้ามีข้อมูลย้อนหลังแล้วใช้ 7 วัน ไม่งั้นแสดงเฉพาะวันนี้ไปก่อน
+  const H = hist || { labels:hours.map(h=>h), tips:hours.map(h=>h+' น.'), newDay:hours.map(()=>false), P:P.q, N:N.q, C:C.q };
+  $('inTitle2').textContent = hist ? `ปริมาณน้ำย้อนหลัง ${HIST_DAYS} วัน (ลบ.ม./วิ)` : 'ปริมาณน้ำวันนี้ (ลบ.ม./วิ) · กำลังโหลดข้อมูลย้อนหลัง…';
+  const line = (label, data, color, w) => ({ type:'line', label, data:clean(data), borderColor:color, backgroundColor:color, borderWidth:w, pointRadius:hist?0:2, pointHoverRadius:4, spanGaps:true, tension:.2 });
   inChart = new Chart($('chIn'), {
-    data:{ labels:hours, datasets:[
-      { type:'line', label:'C.2 เจ้าพระยา', data:clean(C.q), borderColor:css('--text'), backgroundColor:css('--text'), borderWidth:2.5, pointRadius:2, spanGaps:true, order:0 },
-      { type:'line', label:'P.17 ปิง', data:clean(P.q), borderColor:css('--ping'), backgroundColor:css('--ping'), borderWidth:2.5, pointRadius:2, spanGaps:true, order:1 },
-      { type:'line', label:'N.67 น่าน', data:clean(N.q), borderColor:css('--nan'), backgroundColor:css('--nan'), borderWidth:2.5, pointRadius:2, spanGaps:true, order:1 }
+    data:{ labels:H.labels, datasets:[
+      line('C.2 เจ้าพระยา', H.C, css('--text'), 2.5),
+      line('P.17 ปิง', H.P, css('--ping'), 2.2),
+      line('N.67 น่าน', H.N, css('--nan'), 2.2)
     ]},
     options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
       plugins:{ legend:{display:false}, tooltip:{ callbacks:{
-        title:c => `${c[0].label} น.`,
+        title:c => H.tips[c[0].dataIndex],
         label:c => c.raw==null ? null : `${c.dataset.label}: ${f0(c.raw)} ลบ.ม./วิ` } } },
-      scales:{ x:{ ticks:{color:css('--muted'),maxRotation:0,autoSkipPadding:10}, grid:{display:false} },
+      scales:{ x:{ ticks:{ color:css('--muted'), maxRotation:0, autoSkip:!hist,
+                   callback:(v,i) => hist ? (H.newDay[i] ? H.labels[i] : null) : H.labels[i] },
+                   grid:{ display:!!hist, color:c => hist && H.newDay[c.index] ? css('--line') : 'transparent' } },
                y:{ beginAtZero:true, ticks:{color:css('--muted')}, grid:{color:css('--line')} } } }
   });
 }
@@ -523,7 +567,7 @@ function downloadCSV(){
 
 $('date').value = todayISO();
 $('go').onclick = load;
-$('date').onchange = load;
+$('date').onchange = () => { hist = null; load(); };
 $('csv').onclick = downloadCSV;
 function setAuto(){ clearInterval(timer); const m=+$('auto').value; if (m) timer=setInterval(load, m*60000); }
 $('auto').onchange = setAuto;
