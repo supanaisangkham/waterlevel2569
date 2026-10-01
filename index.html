@@ -9,11 +9,11 @@
 <style>
 :root{
   --bg:#e8eff5; --card:#fff; --map1:#eef7f1; --map2:#e3eff8; --contour:rgba(46,120,90,.07); --text:#1c2430; --muted:#667085; --line:#e2e6eb;
-  --accent:#1f6fb2; --ok:#2e8b57; --warn:#d99a1e; --danger:#c8372d; --na:#9aa4b2; --chip:#eef2f7; --mpbg:#17466e; --ping:#2a9d8f; --nan:#7b61c9; --river:#9cc3e6; --sky1:#cfe6f7; --sky2:#eef6fc; --w1:rgba(70,150,215,.82); --w2:rgba(25,85,150,.92);
+  --accent:#1f6fb2; --ok:#2e8b57; --warn:#d99a1e; --danger:#c8372d; --na:#9aa4b2; --chip:#eef2f7; --mpbg:#17466e; --ping:#2a9d8f; --nan:#7b61c9; --river:#4a90d0; --sky1:#cfe6f7; --sky2:#eef6fc; --w1:rgba(70,150,215,.82); --w2:rgba(25,85,150,.92);
 }
 @media (prefers-color-scheme: dark){
   :root{ --bg:#0f151c; --card:#19212a; --map1:#14211c; --map2:#13202c; --contour:rgba(120,200,170,.06); --text:#e6ebf0; --muted:#98a2b3; --line:#2a333e;
-    --accent:#5aa6e6; --ok:#4cbf82; --warn:#e8b54a; --danger:#ef6a5f; --na:#5d6773; --chip:#232d38; --mpbg:#1d3b57; --ping:#4cc3b5; --nan:#a08bea; --river:#2f5a80; --sky1:#14273a; --sky2:#1d3346; --w1:rgba(60,130,200,.8); --w2:rgba(20,70,130,.92); }
+    --accent:#5aa6e6; --ok:#4cbf82; --warn:#e8b54a; --danger:#ef6a5f; --na:#5d6773; --chip:#232d38; --mpbg:#1d3b57; --ping:#4cc3b5; --nan:#a08bea; --river:#4f8fd0; --sky1:#14273a; --sky2:#1d3346; --w1:rgba(60,130,200,.8); --w2:rgba(20,70,130,.92); }
 }
 *{box-sizing:border-box}
 
@@ -61,8 +61,23 @@ button.ghost{background:var(--chip);color:var(--text)}
 .fmap{display:grid;grid-template-columns:1fr 1fr;column-gap:16px;max-width:1000px;margin:0 auto}
 .fmap .node{grid-column:span 1}
 .fmap .node.main{grid-column:1 / -1;justify-self:center;width:min(100%,470px)}
-.fmap svg{grid-column:1 / -1;width:100%;height:64px;display:block}
-.fmap .riv{fill:none;stroke:var(--river);stroke-width:7;stroke-linecap:round}
+.fmap svg.flow{grid-column:1 / -1;width:100%;height:118px;display:block;overflow:visible}
+.fmap svg.flow.down{height:72px}
+@media (max-width:560px){.fmap svg.flow{height:96px}}
+.fmap .node{position:relative;z-index:1}
+.fmap .rbank{fill:none;stroke:var(--card);stroke-linecap:round;opacity:.9}
+.fmap .rwater{fill:none;stroke-linecap:round}
+.fmap .rshine{fill:none;stroke:#fff;stroke-linecap:round;opacity:.45;stroke-dasharray:26 220;animation:shine linear infinite}
+.fmap .drop{fill:#fff;opacity:.9}
+.fmap{position:relative}
+.flab{position:absolute;z-index:2;transform:translate(-50%,-50%);display:flex;align-items:baseline;gap:6px;padding:4px 12px 5px;border-radius:99px;color:#fff;
+  white-space:nowrap;box-shadow:0 2px 8px rgba(10,40,70,.25),0 0 0 3px var(--card);font-variant-numeric:tabular-nums;pointer-events:none}
+.flab b{font-size:20px;font-weight:700;line-height:1}
+.flab .fn{font-size:12.5px;font-weight:600;opacity:.95}
+.flab .fu{font-size:11.5px;opacity:.85}
+@media (max-width:560px){.flab{padding:3px 9px;gap:4px}.flab b{font-size:15px}.flab .fn{font-size:11px}.flab .fu{display:none}}
+@keyframes shine{from{stroke-dashoffset:246}to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion: reduce){.fmap .rshine{animation:none;opacity:0}}
 .fmap .rl{font-size:12px;fill:var(--muted)}
 .node{border:1px solid var(--line);border-left:6px solid var(--na);border-radius:12px;padding:10px 12px;background:var(--card);display:grid;grid-template-columns:minmax(0,1fr) auto;
   grid-template-areas:"t b" "r r" "lv gp" "g g" "tr tr" "qq qq";column-gap:12px;row-gap:2px;align-items:center;min-width:0;box-shadow:0 1px 3px rgba(20,50,80,.06)}
@@ -497,16 +512,63 @@ function renderMap(){
   const P = byKey.P17, N = byKey.N67, C2 = byKey.C2, C13 = byKey.C13;
   $('fmap').innerHTML = `
     ${node(P)}${node(N)}
-    <svg viewBox="0 0 400 64" preserveAspectRatio="none" aria-hidden="true">
-      <path class="riv" d="M100 0 C100 34, 200 30, 200 64" style="stroke:var(--ping)"/>
-      <path class="riv" d="M300 0 C300 34, 200 30, 200 64" style="stroke:var(--nan)"/>
-    </svg>
+    <svg class="flow" id="fTop" aria-hidden="true"></svg>
     ${node(C2, true)}
-    <svg viewBox="0 0 400 64" preserveAspectRatio="none" aria-hidden="true">
-      <path class="riv" d="M200 0 L200 64"/>
-    </svg>
+    <svg class="flow down" id="fDown" aria-hidden="true"></svg>
     ${node(C13, true)}`;
+  requestAnimationFrame(drawRivers);
 }
+
+/* ---------- แม่น้ำเคลื่อนไหว: ความหนาและความเร็วตามปริมาณน้ำจริง ---------- */
+const reduceMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const riverWidth = q => isNaN(q) ? 6 : Math.max(5, Math.min(30, 3 + q / 130));        // px
+const flowDur    = q => isNaN(q) ? 4 : Math.max(1.4, Math.min(6, 6000 / Math.max(q, 1))); // วินาทีต่อรอบ (น้ำมาก = เร็ว)
+const dropCount  = q => isNaN(q) ? 2 : Math.max(2, Math.min(9, Math.round(q / 350)));
+
+function riverSVG(d, q, color, label, lx, ly, anchor){
+  const w = riverWidth(q), dur = flowDur(q), n = dropCount(q), r = Math.max(1.8, Math.min(3.6, w / 4.5));
+  let drops = '';
+  if (!reduceMotion()) for (let i = 0; i < n; i++)
+    drops += `<circle r="${r}" class="drop"><animateMotion dur="${dur}s" begin="-${(dur * i / n).toFixed(2)}s" repeatCount="indefinite" path="${d}"/></circle>`;
+  return `<path d="${d}" class="rbank" style="stroke-width:${w + 4}px"/>
+    <path d="${d}" class="rwater" style="stroke:${color};stroke-width:${w}px"/>
+    <path d="${d}" class="rshine" style="stroke-width:${Math.max(2, w * .45)}px;animation-duration:${(dur * 1.6).toFixed(2)}s"/>
+    ${drops}`;
+}
+
+// จุดบนเส้นโค้ง cubic bezier ที่ตำแหน่ง t
+const bez = (p0,p1,p2,p3,t) => { const u=1-t; return u*u*u*p0 + 3*u*u*t*p1 + 3*u*t*t*p2 + t*t*t*p3; };
+function flowLabel(x, y, name, qv, color){
+  return `<div class="flab" style="left:${x}px;top:${y}px;background:${color}">
+    <span class="fn">${name}</span><b>${isNaN(qv)?'–':f0(qv)}</b><span class="fu">ลบ.ม./วิ</span></div>`;
+}
+function drawRivers(){
+  const top = $('fTop'), down = $('fDown'), map = $('fmap'); if (!top || !down) return;
+  const P = byKey.P17, N = byKey.N67, C2 = byKey.C2;
+  const nodes = map.querySelectorAll('.node');
+  const mb = map.getBoundingClientRect();
+  const tb = top.getBoundingClientRect(), W = Math.round(tb.width), H = Math.round(tb.height);
+  const cx = el => { const b = el.getBoundingClientRect(); return b.left + b.width / 2 - tb.left; };
+  const xp = cx(nodes[0]), xn = cx(nodes[1]), xm = cx(nodes[2]);
+  const dP = `M${xp} -2 C${xp} ${H*.55}, ${xm - 4} ${H*.45}, ${xm - 4} ${H+2}`;
+  const dN = `M${xn} -2 C${xn} ${H*.55}, ${xm + 4} ${H*.45}, ${xm + 4} ${H+2}`;
+  top.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  top.innerHTML = riverSVG(dP, P.qNow, 'var(--ping)') + riverSVG(dN, N.qNow, 'var(--nan)');
+  const db = down.getBoundingClientRect(), W2 = Math.round(db.width), H2 = Math.round(db.height);
+  const x2 = cx(nodes[2]) + tb.left - db.left;
+  down.setAttribute('viewBox', `0 0 ${W2} ${H2}`);
+  down.innerHTML = riverSVG(`M${x2} -2 L${x2} ${H2+2}`, C2.qNow, 'var(--river)');
+  // ป้ายปริมาณน้ำ วางบนเส้นแม่น้ำ สีเดียวกับเส้น
+  const t = W > 520 ? .5 : .3, ox = tb.left - mb.left, oy = tb.top - mb.top;
+  const pP = [bez(xp, xp, xm-4, xm-4, t), bez(-2, H*.55, H*.45, H+2, t)];
+  const pN = [bez(xn, xn, xm+4, xm+4, t), bez(-2, H*.55, H*.45, H+2, t)];
+  map.querySelectorAll('.flab').forEach(e => e.remove());
+  map.insertAdjacentHTML('beforeend',
+    flowLabel(ox + pP[0], oy + pP[1], 'แม่น้ำปิง', P.qNow, 'var(--ping)') +
+    flowLabel(ox + pN[0], oy + pN[1], 'แม่น้ำน่าน', N.qNow, 'var(--nan)') +
+    flowLabel(db.left - mb.left + x2, db.top - mb.top + H2 / 2, 'เจ้าพระยา', C2.qNow, 'var(--river)'));
+}
+let rvTimer; window.addEventListener('resize', () => { clearTimeout(rvTimer); rvTimer = setTimeout(() => stations.length && drawRivers(), 150); });
 
 // เวลาล่าสุดที่ทั้ง 3 สถานีมีปริมาณน้ำ
 function lastCommonQ(list){
