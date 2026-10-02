@@ -142,7 +142,17 @@ main > *{min-width:0}
 .rv .pole{left:37.5%;bottom:15.4%;height:73%;width:auto}
 .rv .water{position:absolute;inset:0;clip-path:polygon(0% 0%, 100% 0%, 100% 27.95%, 75.92% 27.95%, 75.68% 29.49%, 75.84% 31.03%, 75.52% 32.56%, 75.28% 34.10%, 74.96% 35.64%, 74.64% 37.18%, 74.32% 38.72%, 74.08% 40.26%, 73.76% 41.79%, 73.44% 43.33%, 73.13% 44.87%, 72.17% 46.41%, 71.85% 47.95%, 71.53% 49.49%, 71.21% 51.03%, 70.89% 52.56%, 70.57% 54.10%, 70.26% 55.64%, 70.02% 57.18%, 69.70% 58.72%, 69.38% 60.26%, 69.06% 61.79%, 68.18% 63.33%, 67.94% 64.87%, 67.62% 66.41%, 67.30% 67.95%, 66.99% 69.49%, 66.67% 71.03%, 66.43% 72.56%, 66.11% 74.10%, 65.79% 75.64%, 65.47% 77.18%, 64.91% 78.72%, 63.96% 80.26%, 61.64% 81.79%, 61.16% 83.33%, 59.25% 84.87%, 55.82% 86.41%, 51.91% 87.82%, 48.64% 87.82%, 43.70% 86.41%, 40.67% 84.87%, 38.52% 83.33%, 38.12% 81.79%, 35.73% 80.26%, 34.77% 78.72%, 34.37% 77.18%, 34.05% 75.64%, 33.73% 74.10%, 33.49% 72.56%, 33.17% 71.03%, 32.85% 69.49%, 32.62% 67.95%, 32.30% 66.41%, 31.98% 64.87%, 31.66% 63.33%, 30.86% 61.79%, 30.54% 60.26%, 30.22% 58.72%, 29.90% 57.18%, 29.59% 55.64%, 29.35% 54.10%, 29.03% 52.56%, 28.71% 51.03%, 28.39% 49.49%, 28.07% 47.95%, 27.75% 46.41%, 26.87% 44.87%, 26.56% 43.33%, 26.24% 41.79%, 25.92% 40.26%, 25.60% 38.72%, 25.36% 37.18%, 25.04% 35.64%, 24.72% 34.10%, 24.48% 32.56%, 24.24% 31.03%, 24.40% 29.49%, 24.16% 27.95%, 0% 27.95%);}
 .rv .surf{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,var(--w1),var(--w2));transition:top .8s ease}
-.rv .surf::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:rgba(255,255,255,.7)}
+.rv .surf{overflow:visible}
+/* คลื่นผิวน้ำ: ใช้ transform อย่างเดียว เบราว์เซอร์ใช้การ์ดจอวาด ไม่ทำให้หน้าเว็บช้า */
+.rv .wv{position:absolute;left:0;width:200%;height:10px;top:-7px;background:var(--w1);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M0 6 Q15 0 30 6 T60 6 T90 6 T120 6 V12 H0Z'/%3E%3C/svg%3E") repeat-x 0 0/60px 100%;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M0 6 Q15 0 30 6 T60 6 T90 6 T120 6 V12 H0Z'/%3E%3C/svg%3E") repeat-x 0 0/60px 100%;animation:wave 5s linear infinite;will-change:transform}
+.rv .wv.b{top:-5px;opacity:.55;background:#bfe1ff;animation-duration:8s;animation-direction:reverse;-webkit-mask-size:90px 100%;mask-size:90px 100%}
+.rv .glint{position:absolute;inset:0;overflow:hidden}
+.rv .glint::before{content:"";position:absolute;top:0;bottom:0;left:-50%;width:200%;
+  background:repeating-linear-gradient(100deg,transparent 0 46px,rgba(255,255,255,.13) 46px 52px,transparent 52px 110px);animation:glint 9s linear infinite;will-change:transform}
+@keyframes wave{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes glint{from{transform:translateX(0)}to{transform:translateX(110px)}}
+@media (prefers-reduced-motion: reduce){.rv .wv,.rv .glint::before{animation:none}}
 .rv .ln{position:absolute;left:0;right:0;height:0;border-top:2px dashed}
 .rv .ln.bank{border-color:var(--danger)} .rv .ln.watch{border-color:var(--warn)}
 .rv .chip{position:absolute;right:1.5%;transform:translateY(-50%);font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;color:#fff;white-space:nowrap}
@@ -495,7 +505,7 @@ function riverView(s, mini){
   return `<div class="rv${mini?' mini':''}" role="img" aria-label="ภาพจำลองระดับน้ำ ${s.code}: ระดับน้ำ ${f2(s.cur)} ม.รทก. ระดับตลิ่ง ${f2(s.hi)} ม.รทก.">
       <img class="pole" src="${IMG_POLE}" alt="">
       <img class="bg" src="${img}" alt="">
-      <div class="water"><div class="surf" style="top:${wy}%"></div></div>
+      <div class="water"><div class="surf" style="top:${wy}%"><span class="wv b"></span><span class="wv"></span><span class="glint"></span></div></div>
       <div class="ln watch" style="top:${wyw}%"></div>
       <div class="ln bank" style="top:${RV_BANK}%"></div>
       <span class="chip watch" style="top:${wyw}%"><span class="cl">เฝ้าระวัง </span>${f2(s.lo)}</span>
