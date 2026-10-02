@@ -125,7 +125,11 @@ button.ghost{background:var(--chip);color:var(--text)}
 }
 .inflow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}
 .inflow .it{background:var(--bg);border-radius:10px;padding:10px 12px}
+.inflow .it{position:relative}
 .inflow .it .l{font-size:12px;color:var(--muted)}
+.inflow .it .qd{position:absolute;top:10px;right:10px;margin:0;font-size:13px;padding:3px 9px 3px 7px;box-shadow:0 1px 3px rgba(20,50,80,.12)}
+.inflow .it .qd::after{content:" /ชม.";font-weight:500;font-size:11px;opacity:.75}
+@media (max-width:560px){.inflow .it .qd{position:static;display:inline-flex;margin-top:4px;font-size:11px;padding:1px 6px 1px 5px}.inflow .it .qd::after{content:""}}
 .inflow .it .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
 .inflow .it .v small{font-size:12px;color:var(--muted);font-weight:400}
 .inflow .it.sum{background:color-mix(in srgb,var(--accent) 10%,var(--card));border:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
@@ -619,10 +623,11 @@ function renderInflow(){
   const k = lastCommonQ([P, N, C]);
   if (k < 0){ $('inflow').innerHTML = '<div class="msg">ยังไม่มีข้อมูลปริมาณน้ำครบทั้ง 3 สถานี</div>'; if (inChart) inChart.destroy(); return; }
   const qp = P.q[k], qn = N.q[k], qc = C.q[k];
+  const dAt = st => { for (let j = k-1; j >= 0; j--) if (!isNaN(st.q[j])) return st.q[k] - st.q[j]; return NaN; };
   $('inflow').innerHTML = `
-    <div class="it"><div class="l">P.17 แม่น้ำปิง</div><div class="v">${f0(qp)} <small>ลบ.ม./วิ</small></div></div>
-    <div class="it"><div class="l">N.67 แม่น้ำน่าน</div><div class="v">${f0(qn)} <small>ลบ.ม./วิ</small></div></div>
-    <div class="it"><div class="l">ไหลผ่าน C.2 ตอนนี้</div><div class="v">${f0(qc)} <small>ลบ.ม./วิ</small></div></div>`;
+    <div class="it"><div class="l">P.17 แม่น้ำปิง</div><div class="v">${f0(qp)} <small>ลบ.ม./วิ</small></div>${qDelta(dAt(P))}</div>
+    <div class="it"><div class="l">N.67 แม่น้ำน่าน</div><div class="v">${f0(qn)} <small>ลบ.ม./วิ</small></div>${qDelta(dAt(N))}</div>
+    <div class="it"><div class="l">ไหลผ่าน C.2 ตอนนี้</div><div class="v">${f0(qc)} <small>ลบ.ม./วิ</small></div>${qDelta(dAt(C))}</div>`;
   if (inChart) inChart.destroy();
   const clean = a => a.map(v => isNaN(v) ? null : v);
   // ถ้ามีข้อมูลย้อนหลังแล้วใช้ 7 วัน ไม่งั้นแสดงเฉพาะวันนี้ไปก่อน
