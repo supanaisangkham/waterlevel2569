@@ -405,6 +405,13 @@ function ingest(text){
 }
 
 const cm = v => Math.round(Math.abs(v)*100) + ' ซม.';
+// วันที่และเวลาของข้อมูลล่าสุดของสถานี เช่น "2 ต.ค. 69 · 10:00 น." (24:00 = 00:00 ของวันถัดไป)
+function stamp(s){
+  if (s.li < 0) return '–';
+  const t = new Date($('date').value + 'T00:00:00'); t.setHours(parseInt(hours[s.li]));
+  const d = t.toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' });
+  return `${d} · ${String(t.getHours()).padStart(2,'0')}:00 น.`;
+}
 function arrow(v){ return isNaN(v) ? '–' : v>0.005 ? `<span class="up">▲ ขึ้น ${cm(v)}</span>` : v<-0.005 ? `<span class="down">▼ ลด ${cm(v)}</span>` : '● ทรงตัว'; }
 function trendPill(v, h){
   if (isNaN(v)) return '';
@@ -435,7 +442,7 @@ function render(){
         : `<div class="fc ${s.status}">ระดับน้ำ${s.rate<-0.005?'กำลังลดลง':'ทรงตัว'} ยังไม่มีแนวโน้มถึง${s.status==='warn'?'ตลิ่ง':'ระดับเฝ้าระวัง'}</div>`;
     return `<div class="card stn ${s.status}">
       <div class="top">
-        <div><div class="code">${s.code} <span class="nm">${s.name}</span></div><div class="sub">${s.place} · ข้อมูล ${s.li>=0?hours[s.li]+' น.':'–'}</div></div>
+        <div><div class="code">${s.code} <span class="nm">${s.name}</span></div><div class="sub">${s.place} · ข้อมูล ${stamp(s)}</div></div>
         <span class="badge ${s.status}">${STATUS[s.status]}</span>
       </div>
       <div class="hero">
@@ -507,7 +514,7 @@ function node(s, main){
     <div class="gp">${gp}</div>
     <div class="rvw">${riverView(s, true)}</div>
     <div class="trow">${trendPill(s.d3, s.h3)}</div>
-    <div class="qq">${s.hasQ?`<span>ปริมาณน้ำ <b>${f0(s.qNow)}</b> ลบ.ม./วิ${isNaN(s.qpNow)?'':` (${f0(s.qpNow)}% ความจุ)`}</span>`:''}<span>ข้อมูล ${s.li>=0?hours[s.li]+' น.':'–'}</span></div>
+    <div class="qq">${s.hasQ?`<span>ปริมาณน้ำ <b>${f0(s.qNow)}</b> ลบ.ม./วิ${isNaN(s.qpNow)?'':` (${f0(s.qpNow)}% ความจุ)`}</span>`:''}<span>ข้อมูล ${stamp(s)}</span></div>
   </div>`;
 }
 
