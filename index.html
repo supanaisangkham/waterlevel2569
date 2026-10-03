@@ -512,7 +512,6 @@ function render(){
           <div class="gw2">${s.cur>=s.hi ? '' : s.cur>=s.lo ? `⚠ เกินระดับเฝ้าระวัง (${f2(s.lo)}) แล้ว ${f2(s.cur-s.lo)} ม.` : `ต่ำกว่าระดับเฝ้าระวัง (${f2(s.lo)}) ${f2(s.lo-s.cur)} ม.`}</div>
         </div>
       </div>
-      ${riverView(s)}
       <div class="stats">
         <div class="stat"><div class="l">1 ชม. ที่ผ่านมา</div><div class="v">${arrow(s.d1)}</div></div>
         <div class="stat"><div class="l">${s.h3||3} ชม. ที่ผ่านมา</div><div class="v">${arrow(s.d3)}</div></div>
